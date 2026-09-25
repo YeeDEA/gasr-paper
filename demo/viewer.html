@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>청구동 3D — V-World LoD1 뷰어</title>
+<style>
+  html,body{margin:0;height:100%;background:#0d1117;overflow:hidden;font-family:system-ui,sans-serif}
+  #hud{position:fixed;top:12px;left:12px;color:#e6edf3;background:rgba(13,17,23,.75);
+       padding:10px 14px;border-radius:8px;font-size:13px;line-height:1.6;pointer-events:none}
+  #hud b{color:#7fa8d0}
+  #hud .src{display:block;margin-top:6px;font-size:11px;color:#8b98a5}
+</style>
+</head>
+<body>
+<div id="hud"><b>청구동 (서울 중구)</b> · V-World 건물통합정보 LoD1<br>
+드래그 회전 · 휠 줌 · 우클릭 이동 — <span id="stat">로딩 중…</span>
+<span class="src" id="src">형상: 실측 footprint + 지상층수 · 지면: V-World 정사영상 · 지형: Terrarium DEM</span></div>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+"three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x0d1117, 1500, 4000);
+const camera = new THREE.PerspectiveCamera(55, innerWidth/innerHeight, 1, 10000);
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(devicePixelRatio);
+renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement);
+const controls = new OrbitControls(camera, renderer.domElement);
+camera.position.set(-320, 230, 520); controls.target.set(0, 45, 0);
+
+scene.add(new THREE.HemisphereLight(0xdce8f5, 0x54514c, 2.2));
+const sun = new THREE.DirectionalLight(0xfff2dd, 2.4);
+sun.position.set(600, 900, 300); sun.castShadow = true;
+sun.shadow.mapSize.set(2048,2048);
+Object.assign(sun.shadow.camera, {left:-900,right:900,top:900,bottom:-900,far:2500});
+scene.add(sun);
+
+const meta = await (await fetch('data/meta.json')).json();
+const dem  = await (await fetch('data/terrain.json')).json();
+const cLon = (meta.min_lon+meta.max_lon)/2, cLat = (meta.min_lat+meta.max_lat)/2;
+const M_LON = 111320*Math.cos(cLat*Math.PI/180), M_LAT = 110540; // deg→m
+const toXY = (lon,lat)=>[(lon-cLon)*M_LON, (lat-cLat)*M_LAT];
+
+// 표고 샘플러: DEM 그리드 쌍선형 보간, 최저 표고를 y=0으로
+const demH = (lon,lat)=>{
+  const u = (lon-meta.min_lon)/(meta.max_lon-meta.min_lon)*(dem.w-1);
+  const v = (meta.max_lat-lat)/(meta.max_lat-meta.min_lat)*(dem.h-1);
+  const i = Math.max(0,Math.min(dem.w-2,Math.floor(u))), j = Math.max(0,Math.min(dem.h-2,Math.floor(v)));
+  const fu = u-i, fv = v-j, g = dem.grid;
+  return g[j][i]*(1-fu)*(1-fv)+g[j][i+1]*fu*(1-fv)+g[j+1][i]*(1-fu)*fv+g[j+1][i+1]*fu*fv - dem.min;
+};
+
+// 지면: DEM으로 변위시킨 위성영상 지형
+{
+  const [w,] = toXY(meta.max_lon, cLat), [,h] = toXY(cLon, meta.max_lat);
+  const tex = new THREE.TextureLoader().load('data/satellite.jpg');
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const geo = new THREE.PlaneGeometry(w*2, h*2, dem.w-1, dem.h-1);
+  const pos = geo.attributes.position;
+  for (let k=0;k<pos.count;k++){
+    const lon = cLon + pos.getX(k)/M_LON, lat = cLat + pos.getY(k)/M_LAT; // plane y+ = 북(텍스처 상단)
+    pos.setZ(k, demH(lon,lat));
+  }
+  geo.computeVertexNormals();
+  // 위성영상은 실제 태양광이 이미 구워져 있으므로 조명 미적용 재질 사용
+  const g = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({map:tex}));
+  g.rotation.x = -Math.PI/2; g.receiveShadow = true; scene.add(g);
+}
+
+// ── 생성형 파사드 레이어 (선택적·되돌릴 수 있음) ────────────────────────
+// data/facades/manifest.json 이 있을 때만 적용된다. 없으면 아래 baseline 그대로.
+// 되돌리기 3가지: ① data/facades/ 폴더 삭제  ② URL 에 ?gen=off  ③ 실행 중 G 키
+const genParam = new URLSearchParams(location.search).get('gen');
+let manifest = null;
+if (genParam !== 'off'){
+  try { const r = await fetch('data/facades/manifest.json'); if (r.ok) manifest = await r.json(); } catch {}
+}
+// 건물 하나에 적용할 생성 타일 규칙을 찾는다 (먼저 매칭되는 규칙 우선)
+function ruleFor(f){
+  if (!manifest) return null;
+  const fl = f.properties.floors||0, nm = f.properties.name||'';
+  for (const t of manifest.tiles||[]){
+    const m = t.match||{};
+    if (m.name_regex && !new RegExp(m.name_regex).test(nm)) continue;
+    if (m.min_floors!=null && fl < m.min_floors) continue;
+    if (m.max_floors!=null && fl > m.max_floors) continue;
+    return t;
+  }
+  return null;
+}
+
+// 건물: footprint 압출 (층수 × 3.1 m). 데이터에 없는 것은 만들지 않는다 — 무늬 없는 중립 회색.
+const gj = await (await fetch('data/buildings.geojson')).json();
+const roofMat = new THREE.MeshLambertMaterial({color:0x8f959b});
+const wallMat = new THREE.MeshLambertMaterial({color:0xc6cbd0});
+const roofGeoms = [], wallGeoms = [];
+const genWallGeoms = new Map();   // 규칙 id → 벽 지오메트리 배열
+let n = 0;
+
+for (const f of gj.features){
+  const g = f.geometry;
+  const polys = g.type==='MultiPolygon' ? g.coordinates : [g.coordinates];
+  const h = (f.properties.floors||1)*3.1;
+  for (const rings of polys){
+    const pts = rings[0];
+    // rotateX(-90°)가 z=-y로 보내므로, 지면(북=-z)과 맞추려면 y를 그대로 둔다
+    const shape = new THREE.Shape(pts.map(([lo,la])=>{const[x,y]=toXY(lo,la);return new THREE.Vector2(x,y);}));
+    for (const hole of rings.slice(1))
+      shape.holes.push(new THREE.Path(hole.map(([lo,la])=>{const[x,y]=toXY(lo,la);return new THREE.Vector2(x,y);})));
+    // 지형 안착: footprint 중심 표고에서 3m 묻고 시작
+    const [clo,cla] = pts.reduce((a,p)=>[a[0]+p[0]/pts.length, a[1]+p[1]/pts.length],[0,0]);
+    const base = demH(clo,cla);
+    const geo = new THREE.ExtrudeGeometry(shape,{depth:h+3,bevelEnabled:false});
+    geo.rotateX(-Math.PI/2);            // z(높이)→y
+    geo.translate(0, base-3, 0);
+    // ExtrudeGeometry 그룹: 0=캡(지붕/바닥), 1=벽 — 재질별로 분리해 각각 병합
+    for (const grp of geo.groups){
+      const part = new THREE.BufferGeometry();
+      for (const name of ['position','normal','uv']){
+        const a = geo.attributes[name];
+        part.setAttribute(name, new THREE.BufferAttribute(
+          a.array.slice(grp.start*a.itemSize, (grp.start+grp.count)*a.itemSize), a.itemSize));
+      }
+      if (grp.materialIndex===0){ roofGeoms.push(part); continue; }
+      const rule = ruleFor(f);
+      if (rule){
+        if (!genWallGeoms.has(rule.id)) genWallGeoms.set(rule.id, {rule, geoms:[]});
+        genWallGeoms.get(rule.id).geoms.push(part);
+      } else wallGeoms.push(part);
+    }
+    n++;
+  }
+}
+// 개별 mesh 수천 개 대신 재질별 병합 — 드로우콜 최소화
+const { mergeGeometries } = await import('three/addons/utils/BufferGeometryUtils.js');
+for (const [gs, m] of [[roofGeoms, roofMat], [wallGeoms, wallMat]]){
+  if (!gs.length) continue;
+  const mesh = new THREE.Mesh(mergeGeometries(gs, false), m);
+  mesh.castShadow = mesh.receiveShadow = true;
+  scene.add(mesh);
+}
+
+// 생성 텍스처가 적용되는 벽은 별도 메시로 — G 키로 baseline 재질과 즉시 맞바꿀 수 있게 둘 다 보관
+const genMeshes = [];
+let genCount = 0;
+for (const {rule, geoms} of genWallGeoms.values()){
+  const tex = new THREE.TextureLoader().load(`data/facades/${rule.file}`);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const [tw, th] = rule.tile_meters || [3.5, 3.1];
+  tex.repeat.set(1/tw, 1/th);                    // UV가 미터 단위 → 실축 타일링
+  let mat;
+  if (rule.normal_file){                          // 법선맵이 있으면 굴곡 표현 (논문 §4.3 baseline)
+    const nrm = new THREE.TextureLoader().load(`data/facades/${rule.normal_file}`);
+    nrm.wrapS = nrm.wrapT = THREE.RepeatWrapping; nrm.repeat.set(1/tw, 1/th);
+    mat = new THREE.MeshStandardMaterial({map:tex, normalMap:nrm, roughness:0.85, metalness:0.0});
+  } else mat = new THREE.MeshLambertMaterial({map:tex});
+  const mesh = new THREE.Mesh(mergeGeometries(geoms, false), mat);
+  mesh.castShadow = mesh.receiveShadow = true;
+  mesh.userData.baseMat = wallMat;               // 되돌릴 재질
+  mesh.userData.genMat = mesh.material;
+  scene.add(mesh); genMeshes.push(mesh); genCount += geoms.length;
+}
+
+const stat = document.getElementById('stat'), srcLine = document.getElementById('src');
+stat.textContent = `건물 ${n}동 렌더링`;
+if (genMeshes.length){
+  let on = true;
+  const paint = ()=>{
+    for (const m of genMeshes) m.material = on ? m.userData.genMat : m.userData.baseMat;
+    srcLine.innerHTML = on
+      ? `형상: 실측 footprint + 지상층수 · 지면: V-World 정사영상 · 지형: Terrarium DEM<br>` +
+        `<span style="color:#e0a458">⬤ 파사드 ${genWallGeoms.size}종은 생성형 모델 산출물(실측 아님)</span> — G 키로 끄기`
+      : `형상: 실측 footprint + 지상층수 · 지면: V-World 정사영상 · 지형: Terrarium DEM<br>` +
+        `생성 파사드 꺼짐 (baseline) — G 키로 켜기`;
+  };
+  addEventListener('keydown', e=>{ if (e.key==='g'||e.key==='G'){ on=!on; paint(); } });
+  paint();
+}
+
+// #focus=이름 → 해당 건물로 카메라 이동 (예: viewer.html#focus=삼성아파트)
+{
+  const q = decodeURIComponent(location.hash).match(/focus=([^&]+)/);
+  if (q){
+    const hit = gj.features.find(f=>(f.properties.name||'').includes(q[1]));
+    if (hit){
+      const pts = (hit.geometry.type==='MultiPolygon'?hit.geometry.coordinates[0]:hit.geometry.coordinates)[0];
+      const [clo,cla] = pts.reduce((a,p)=>[a[0]+p[0]/pts.length, a[1]+p[1]/pts.length],[0,0]);
+      const [x,y] = toXY(clo,cla), yb = demH(clo,cla);
+      controls.target.set(x, yb+15, -y);
+      camera.position.set(x-120, yb+90, -y+160);
+      document.getElementById('stat').textContent += ` · 포커스: ${q[1]}`;
+    }
+  }
+}
+
+addEventListener('resize', ()=>{ camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); });
+renderer.setAnimationLoop(()=>{ controls.update(); renderer.render(scene,camera); });
+</script>
+</body>
+</html>

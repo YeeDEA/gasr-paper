@@ -1,0 +1,235 @@
+<title>기하 인지 3D 초해상도</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700&family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#FBFAF7; --ink:#1E2226; --muted:#5D6673; --accent:#1F4E79;
+  --rule:#D9D5CC; --box:#F1EFE8; --code:#EDEAE2;
+}
+:root:not([data-theme="light"]){}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#15181B; --ink:#E7E5DF; --muted:#9AA3AD; --accent:#7FA8D0;
+    --rule:#33383E; --box:#1D2126; --code:#22262B;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#15181B; --ink:#E7E5DF; --muted:#9AA3AD; --accent:#7FA8D0;
+  --rule:#33383E; --box:#1D2126; --code:#22262B;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif;
+  line-height:1.75;margin:0;padding:3rem 1.25rem 5rem;font-size:16px}
+.paper{max-width:46rem;margin:0 auto}
+h1,h2,h3{font-family:'Noto Serif KR',serif;text-wrap:balance;line-height:1.35}
+h1{font-size:1.9rem;font-weight:700;margin:.5rem 0 .25rem}
+.subtitle{font-family:'Noto Serif KR',serif;font-size:1.05rem;color:var(--muted);margin:0 0 1.5rem}
+.byline{font-size:.85rem;color:var(--muted);border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);
+  padding:.6rem 0;display:flex;gap:1.5rem;flex-wrap:wrap;margin-bottom:2rem}
+.abstract{background:var(--box);border-left:3px solid var(--accent);padding:1.1rem 1.3rem;margin:0 0 2.5rem;font-size:.93rem}
+.abstract b{font-family:'Noto Serif KR',serif}
+h2{font-size:1.3rem;font-weight:600;margin:2.8rem 0 .8rem;color:var(--accent)}
+h3{font-size:1.05rem;font-weight:600;margin:1.8rem 0 .5rem}
+p{margin:.7rem 0}
+.eyebrow{font-family:'JetBrains Mono',monospace;font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+table{border-collapse:collapse;width:100%;font-size:.85rem;font-variant-numeric:tabular-nums}
+.tablewrap{overflow-x:auto;margin:1rem 0}
+th{border-top:2px solid var(--ink);border-bottom:1px solid var(--ink);text-align:left;padding:.45rem .6rem;font-weight:700}
+td{border-bottom:1px solid var(--rule);padding:.45rem .6rem;vertical-align:top}
+caption{caption-side:top;text-align:left;font-size:.8rem;color:var(--muted);padding-bottom:.4rem}
+caption b{color:var(--ink)}
+.fig{background:var(--box);border:1px solid var(--rule);border-radius:4px;padding:1rem 1.2rem;margin:1.3rem 0;overflow-x:auto}
+.fig pre{font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.6;margin:0;white-space:pre}
+.figcap{font-size:.8rem;color:var(--muted);margin-top:.6rem}
+.figcap b{color:var(--ink)}
+.eq{font-family:'JetBrains Mono',monospace;font-size:.85rem;background:var(--code);padding:.7rem 1rem;border-radius:4px;overflow-x:auto;margin:.9rem 0}
+ol.refs{font-size:.85rem;padding-left:1.4rem}
+ol.refs li{margin:.45rem 0}
+ul{padding-left:1.3rem}
+li{margin:.3rem 0}
+code{font-family:'JetBrains Mono',monospace;font-size:.85em;background:var(--code);padding:.1em .35em;border-radius:3px}
+a{color:var(--accent)}
+.note{font-size:.82rem;color:var(--muted);border-top:1px solid var(--rule);margin-top:3rem;padding-top:1rem}
+</style>
+<div class="paper">
+<p class="eyebrow">Research Proposal · 3D Vision</p>
+<h1>기하 인지 3D 초해상도: 2D 초해상도 사전지식의 텍스처–형상 동시 전이</h1>
+<p class="subtitle">Geometry-Aware 3D Super-Resolution: Transferring 2D SR Priors to Joint Texture–Shape Refinement, toward High-Fidelity Korean Urban Digital Twins</p>
+<div class="byline"><span>최용준 (Yongjun Choi)</span><span>2026-08-22 · Draft v2 (예비 구현 반영)</span><span>Keywords: Super-Resolution, 3D Gaussian Splatting, NeRF, Mesh Refinement, V-World, S-Map</span></div>
+
+<div class="abstract">
+<b>초록.</b> 2D 영상 초해상도(Super-Resolution, SR)는 확산 모델 기반 생성 사전지식(generative prior)의 도입으로 실사 수준의 세부 복원에 도달했다. 그러나 이 사전지식을 3D 표현(NeRF, 3D Gaussian Splatting, 메시)에 적용한 기존 연구는 대부분 <b>텍스처(외관)의 선명화에 국한</b>되며, 렌더링 뷰별로 독립 적용된 2D SR이 만들어내는 다중뷰 불일치(multi-view inconsistency)가 오히려 기하(geometry)를 오염시키는 문제를 안고 있다. 본 논문은 2D SR 사전지식을 (i) 외관뿐 아니라 (ii) 표면 법선·깊이·SDF 등 <b>기하 채널에 동시에 전이</b>하는 프레임워크 <b>GASR (Geometry-Aware Super-Resolution)</b>를 제안한다. 핵심은 세 가지다: ① RGB–법선–깊이를 한 묶음으로 업샘플하는 교차모달 SR 네트워크, ② 뷰별 SR 결과를 3D 표현에 되새기기 전에 강제하는 에피폴라 일관성 증류(epipolar-consistent distillation), ③ 고주파 세부를 텍스처와 형상 중 물리적으로 옳은 쪽에 귀속시키는 음영 분해(shading decomposition) 손실. 나아가 본 프레임워크를 국토교통부 브이월드(V-World)와 서울시 S-Map의 저해상도 건물 메시·항공 텍스처에 적용하여, 공개 API만으로 고품질 한국 도시 맵 — 디지털 트윈 및 오픈월드 게임의 플레이어블 환경 — 을 구축하는 파이프라인을 설계한다.
+</div>
+
+<h2>1. 서론</h2>
+<p>2D 초해상도는 SRCNN에서 출발해 적대적 학습(ESRGAN), 트랜스포머(SwinIR, HAT)를 거쳐, 최근에는 사전학습 확산 모델의 생성 사전지식을 활용하는 계열(StableSR, DiffBIR, SUPIR)로 발전했다 [1–5]. 이들의 공통된 통찰은 <b>"저해상도 관측이 잃어버린 고주파 정보는 복원하는 것이 아니라, 자연 영상 분포에 대한 사전지식으로부터 생성하는 것"</b>이라는 점이다.</p>
+<p>한편 3D 비전에서는 NeRF [6]와 3D Gaussian Splatting(3DGS) [7]이 사진 집합으로부터의 장면 복원을 실용화했지만, 입력 영상의 해상도·촬영 밀도가 곧 품질의 상한이 된다. 항공사진과 자동 생성 메시에 의존하는 도시 규모 데이터 — 브이월드의 3D 건물 타일, S-Map의 서울 디지털 트윈 — 는 이 한계가 특히 두드러진다: 텍스처는 흐릿하고, 형상은 LoD(Level of Detail) 2~3 수준의 각진 근사에 머문다.</p>
+<p>2D SR을 3D에 이식하려는 기존 시도(NeRF-SR [8], Super-NeRF, SRGS [9], GaussianSR [10], SuperGaussian [11] 등)는 의미 있는 진전을 이뤘으나 두 가지 구조적 한계를 공유한다.</p>
+<ul>
+<li><b>텍스처 편중.</b> SR은 렌더링된 RGB에만 적용되고, 기하는 저해상도 관측이 결정한 상태로 남는다. 결과물은 "흐릿한 조각상에 선명한 벽지를 바른" 형태가 된다.</li>
+<li><b>다중뷰 불일치.</b> 뷰별로 독립 실행된 생성형 SR은 같은 표면점에 서로 다른 세부를 환각(hallucinate)하며, 이를 그대로 3D에 역투영하면 플로터(floater)와 표면 요철 잡음으로 기하가 오히려 악화된다.</li>
+</ul>
+<p>본 논문의 주장은 다음과 같다: <b>2D SR 사전지식은 외관 채널만이 아니라 기하 채널(법선·깊이)에 대해서도 유효하며, 두 채널을 결합해 일관성을 강제할 때에만 텍스처와 형상이 동시에 개선된다.</b> 자연 영상에서 고주파 텍스처의 상당 부분은 실제로는 미세 기하(요철, 몰딩, 창틀)의 음영이기 때문이다. 이 관측을 정식화한 프레임워크 GASR를 제안하고, 브이월드/S-Map 기반 한국 도시 재구성이라는 구체적 응용으로 검증 계획을 제시한다.</p>
+
+<h2>2. 관련 연구</h2>
+<h3>2.1 2D 초해상도의 계보</h3>
+<p>회귀 기반(PSNR 지향) 모델은 왜곡–지각 트레이드오프 [12]에 의해 과도하게 평활한 결과를 내며, 생성 기반 모델(GAN·확산)은 지각 품질을 얻는 대신 <b>충실도(fidelity)를 희생하고 세부를 환각</b>한다. 3D 전이에서 이 환각은 단일 영상에서는 무해하지만 다중뷰에서는 불일치의 근원이 된다 — 본 연구의 §4.2가 다루는 핵심 문제다.</p>
+<h3>2.2 3D 표현의 초해상도</h3>
+<div class="tablewrap"><table>
+<caption><b>표 1.</b> 기존 3D SR 연구의 개선 대상 비교. 기하 개선을 명시적 목표로 삼은 연구는 드물다.</caption>
+<tr><th>연구</th><th>표현</th><th>텍스처</th><th>형상</th><th>다중뷰 일관성 처리</th></tr>
+<tr><td>NeRF-SR [8]</td><td>NeRF</td><td>○ (슈퍼샘플링)</td><td>△ 간접</td><td>서브픽셀 제약</td></tr>
+<tr><td>SRGS [9]</td><td>3DGS</td><td>○</td><td>✕</td><td>서브픽셀 + 2D SR 증류</td></tr>
+<tr><td>GaussianSR [10]</td><td>3DGS</td><td>○ (확산 사전)</td><td>✕</td><td>불확실성 가중</td></tr>
+<tr><td>SuperGaussian [11]</td><td>3DGS</td><td>○ (비디오 SR)</td><td>△ 부산물</td><td>비디오 시간 일관성 차용</td></tr>
+<tr><td><b>GASR (제안)</b></td><td>3DGS+SDF / 메시</td><td>○</td><td><b>○ 명시적</b></td><td>에피폴라 증류 + 음영 분해</td></tr>
+</table></div>
+<p>SuperGaussian이 비디오 SR의 시간적 일관성을 빌려 뷰 일관성을 근사한 것은 주목할 만하나, 카메라 궤적이 비디오처럼 조밀하지 않은 항공·거리뷰 혼합 데이터에는 적용이 어렵다.</p>
+<h3>2.3 기하 정련과 단안 기하 사전지식</h3>
+<p>단안 깊이·법선 추정(Depth Anything [13], Metric3D, StableNormal)은 대규모 데이터로 학습된 강력한 기하 사전지식이며, 2DGS·SuGaR·Neuralangelo 등은 3DGS/NeRF로부터 정밀 표면을 추출한다. 그러나 이들 기하 사전지식을 <b>SR 문제와 결합해 "고해상도 기하의 생성"에 쓴 연구는 공백</b>이며 본 논문이 이 공백을 겨냥한다.</p>
+
+<h2>3. 문제 정식화</h2>
+<p>저해상도 관측 집합 <code>{I_i^LR}</code>과 (선택적으로) 저정밀 초기 메시 <code>M^LR</code>이 주어질 때, 목표는 스케일 s에서의 고해상도 외관 A와 고정밀 기하 G를 갖는 3D 표현 Θ를 추정하는 것이다:</p>
+<div class="eq">Θ* = argmin_Θ  Σ_i [ L_app( R_A(Θ, c_i), Φ_SR(I_i^LR) )  +  λ_g · L_geo( R_G(Θ, c_i), Ψ_SR(I_i^LR) ) ]  +  λ_c · L_consist(Θ)</div>
+<p>여기서 <code>R_A</code>, <code>R_G</code>는 각각 카메라 <code>c_i</code>에서의 외관(RGB)·기하(법선 n̂, 깊이 d̂) 렌더러, <code>Φ_SR</code>은 2D 영상 SR, <code>Ψ_SR</code>은 본 논문이 제안하는 <b>기하 채널 SR</b>, <code>L_consist</code>는 뷰 간 일관성 정칙화다. 기존 연구는 λ_g = 0인 특수해에 해당한다.</p>
+
+<h2>4. 제안 방법: GASR</h2>
+<div class="fig"><pre>
+ {I^LR}  ─┬─▶ [초기 3DGS+SDF 복원] ──▶ Θ₀ (저해상도 장면)
+          │                              │ 렌더: RGB·n̂·d̂ (각 뷰)
+          │                              ▼
+          └─▶ [① X-SR: RGB‖법선‖깊이 교차모달 초해상도]
+                                         │ 뷰별 HR 의사라벨
+                                         ▼
+              [② 에피폴라 일관성 증류 — 불일치 화소 다운웨이트]
+                                         │ 일관 HR 라벨
+                                         ▼
+              [③ 음영 분해 손실로 Θ 미세조정] ──▶ Θ* ──▶ 메시 추출/베이킹
+</pre><div class="figcap"><b>그림 1.</b> GASR 파이프라인 개요. 2D SR을 외관과 기하 채널에 동시 적용하고(①), 3D에 되새기기 전에 뷰 간 일관성을 강제하며(②), 고주파를 텍스처/형상 중 옳은 쪽에 귀속시킨다(③).</div></div>
+
+<h3>4.1 교차모달 초해상도 네트워크 (X-SR)</h3>
+<p>초기 장면 Θ₀에서 각 학습 뷰의 RGB, 법선맵, 깊이맵을 렌더링하고, 이 3종을 채널 결합해 하나의 확산 기반 SR 네트워크에 입력한다. 출력도 3종의 고해상도 맵이다. 설계 근거는 두 가지다.</p>
+<ul>
+<li><b>상호 조건화.</b> RGB의 고주파 단서(창틀 에지)는 법선 SR을 유도하고, 법선의 평면성 사전지식은 RGB SR의 환각을 억제한다. 단안 기하 추정기(Depth Anything 계열)를 인코더로 재활용하면 대규모 기하 사전지식을 무상으로 상속한다.</li>
+<li><b>학습 데이터의 합성 가능성.</b> 고품질 합성 도시 데이터셋(또는 고해상도 사진측량 결과)을 렌더링해 (LR, HR) 쌍을 RGB·법선·깊이 모두에 대해 무한정 생성할 수 있다 — 실측 HR 기하가 없어도 학습이 가능하다.</li>
+</ul>
+
+<h3>4.2 에피폴라 일관성 증류</h3>
+<p>뷰 i의 SR 결과 화소 p를 현재 기하로 뷰 j에 재투영해 대응점 p′를 얻고, 두 SR 결과의 특징 불일치 <code>δ_ij(p) = ‖F(Φ_SR(I_i))(p) − F(Φ_SR(I_j))(p′)‖</code>를 계산한다. 불일치가 큰 화소는 생성형 SR의 환각일 확률이 높으므로, 3D 증류 손실에서 가중치 <code>w(p) = exp(−δ/τ)</code>로 감쇠시킨다. 이는 GaussianSR의 뷰별 불확실성 추정을 <b>뷰 간(pairwise) 기하 검증으로 강화</b>한 것으로, "일관되게 그럴듯한 세부만 3D에 새긴다"는 원칙을 구현한다. 오클루전은 렌더 깊이로 판정해 비교에서 제외한다.</p>
+
+<h3>4.3 음영 분해 손실: 고주파의 올바른 귀속</h3>
+<p>텍스처–형상 동시 개선의 핵심 난제는 <b>귀속 모호성</b>이다: 벽돌 패턴의 어두운 줄눈은 페인트(텍스처)인가 홈(기하)인가? GASR은 외관을 알베도 a와 음영 s(n̂, ℓ)로 분해하는 간이 역렌더링을 도입하고 다음을 강제한다.</p>
+<div class="eq">L_shade = ‖ I^SR − a ⊙ s(n̂^SR, ℓ) ‖₁ + λ_a·TV(a)    (알베도의 총변동 정칙화)</div>
+<p>알베도에 조각별 평활(piecewise-smooth) 사전을 두면, 조명 방향에 따라 밝기가 변하는 고주파 성분은 자연스럽게 법선(즉 미세 기하) 쪽으로 밀려난다. 다중 시각·다중 시간대 항공사진이 존재하는 도시 데이터에서는 동일 표면의 상이한 조명 관측이 이 분해를 강하게 제약한다 — <b>도시 응용이 방법론에 유리하게 작용하는 지점</b>이다.</p>
+
+<h3>4.4 기하 표현과 미세 기하의 이중 스케일 처리</h3>
+<p>기반 표현은 3DGS에 SDF를 결합한 하이브리드(예: GSDF·NeuSG 계열)를 사용한다. 개선된 기하는 두 스케일로 나누어 수용한다:</p>
+<ul>
+<li><b>구조 스케일</b>(&gt; 수 cm): SDF 자체를 갱신 — 처마, 창 함몰, 몰딩이 실제 형상으로 복원된다.</li>
+<li><b>미세 스케일</b>(&lt; 수 cm): 변위/법선맵으로 베이킹 — 메시 정점 수 폭발 없이 렌더링 시 재현한다.</li>
+</ul>
+<p>이 분리는 최종 산출물이 게임엔진·웹뷰어에서 소비 가능한 <b>LoD 계층을 갖춘 메시 + PBR 텍스처</b>가 되도록 보장한다.</p>
+
+<h2>5. 응용 설계: 브이월드·S-Map 기반 한국 오픈월드 게임 맵</h2>
+<p>본 프레임워크의 최종 목적지는 공개 API만으로 구축하는, <b>한국 도시를 배경으로 한 오픈월드 게임의 플레이어블 맵</b>이다. 이는 순수 디지털 트윈보다 요구조건이 하나 더 붙는다: 시각 품질뿐 아니라 <b>런타임 성능(스트리밍·LoD)과 게임플레이 기하(충돌 메시, 주행 가능 도로, 진입 가능 공간)</b>가 산출물 규격에 포함되어야 한다. 활용 가능한 데이터 현실은 다음과 같다.</p>
+<div class="tablewrap"><table>
+<caption><b>표 2.</b> 활용 가능한 국내 공개 지리공간 데이터와 GASR 파이프라인에서의 역할.</caption>
+<tr><th>소스</th><th>제공물</th><th>한계</th><th>GASR에서의 역할</th></tr>
+<tr><td>브이월드 API</td><td>전국 3D 건물 타일(3DS/glTF 계열), 정사영상, 수치표고모델(DEM)</td><td>LoD 2~3 각진 메시, 저해상 벽면 텍스처</td><td>초기 기하 M^LR · 전역 좌표계(EPSG:5186)·스케일 앵커</td></tr>
+<tr><td>S-Map (서울시)</td><td>서울 디지털 트윈, 실내외 3D, 도시 데이터 레이어</td><td>서울 한정, 텍스처 해상도 불균일</td><td>고밀도 지역 초기값 + 평가용 준거</td></tr>
+<tr><td>카카오/네이버 로드뷰, 국토지리정보원 항공사진</td><td>지상 근접 뷰, 고해상 연직 영상</td><td>라이선스 확인 필요, 시점 희소</td><td>SR 증류용 실관측 뷰(취득 가능 범위 내)</td></tr>
+</table></div>
+<h3>5.1 파이프라인</h3>
+<ul>
+<li><b>1단계 — 타일 수집·정규화.</b> 브이월드 타일과 정사영상을 관심 구역 단위로 취득, EPSG:5186→로컬 ENU 변환, 텍스처를 뷰로 언프로젝션해 의사 관측 집합을 구성한다.</li>
+<li><b>2단계 — 초기 장면.</b> 저해상 메시를 SDF로 초기화하고 의사 관측으로 3DGS를 워밍업한다. 초기 기하가 존재하므로 순수 SfM 대비 수렴이 빠르고 스케일 모호성이 없다.</li>
+<li><b>3단계 — GASR 정련.</b> §4의 3요소를 적용한다. 건물 파사드는 반복 구조(창문 격자)가 강하므로, 파사드 단위 대칭·반복 사전을 X-SR의 조건으로 추가 주입하는 국소 확장을 둔다.</li>
+<li><b>4단계 — 산출.</b> 3D Tiles(OGC) 규격으로 LoD 계층 메시 + PBR 텍스처를 베이킹, CesiumJS·게임엔진에서 스트리밍 소비한다. Unreal Engine은 Cesium for Unreal로 3D Tiles를 직접 스트리밍하므로 게임 파이프라인과의 접합점이 된다.</li>
+</ul>
+<h3>5.2 게임 산출 계층 (Game-Ready Layer)</h3>
+<p>GASR 정련 결과 위에 게임 소비를 위한 후처리 계층을 둔다. 이 계층은 방법론(§4)과 독립적이며, 산출 규격만 계약한다.</p>
+<ul>
+<li><b>충돌 기하:</b> 시각 메시(고밀도)와 별도로, SDF 구조 스케일(§4.4)에서 단순화한 볼록 분해 충돌 메시를 자동 생성한다. 미세 스케일 요철은 충돌에서 제외 — 플레이어가 몰딩에 걸리면 안 된다.</li>
+<li><b>도로 네트워크:</b> 브이월드/국가표준노드링크의 도로 중심선 데이터를 DEM에 정합해 주행 가능 스플라인·차선 메타데이터를 생성한다. 이는 SR 산출물이 아니라 벡터 데이터의 직접 변환이므로 신뢰도가 높다.</li>
+<li><b>LoD·스트리밍 예산:</b> 오픈월드 주행 속도(~150 km/h) 기준 타일 프리페치 반경과 LoD 전환 거리를 산출 규격에 포함한다. §6.2의 "3D Tiles 용량/프레임율" 지표가 이 예산의 검증이다.</li>
+<li><b>진입 가능 공간:</b> 파사드에서 검출된 출입구(§6.2 창문/출입구 검출 IoU)를 앵커로, 실내는 절차적 생성으로 채운다 — 스캔 복원 범위 밖임을 명시한다.</li>
+<li><b>스타일 패스(선택):</b> 실사 그대로가 아니라 게임 아트 디렉션이 필요할 경우, X-SR의 확산 사전을 스타일 조건(LoRA)으로 교체해 정련 단계에서 일괄 스타일라이즈할 수 있다 — 뷰 일관성 기구(§4.2)가 그대로 스타일 일관성을 보장한다는 것이 부수 이점이다.</li>
+</ul>
+<h3>5.3 국내 데이터 특수성에 대한 대응</h3>
+<ul>
+<li><b>간판·한글 텍스트:</b> 생성형 SR은 텍스트를 훼손하기 쉽다. 한글 OCR 마스크 영역에서는 환각 억제 가중치를 높이고 충실도 항을 강화한다.</li>
+<li><b>유리 커튼월:</b> 반사 표면은 음영 분해를 오도한다. 시멘틱 분할로 반사 재질을 검출해 L_shade에서 제외한다.</li>
+<li><b>라이선스:</b> 상업 게임 배포는 연구 사용보다 요건이 엄격하다. 브이월드·S-Map은 공공누리 유형별 상업적 이용·변형 허용 여부를 구역 단위로 확인하고, 로드뷰 계열(카카오·네이버)은 약관상 재가공·게임 내 사용이 대체로 불허이므로 <b>기본 파이프라인에서 제외</b>한다(§5.1은 해당 소스 없이 동작). 실존 상호·간판은 상표권 문제로 게임 산출 계층에서 가상 상호로 치환한다.</li>
+</ul>
+
+<h3>5.4 예비 구현에서 확인된 사실 (서울 중구 청구동, 2026-08)</h3>
+<p>브이월드 API로 청구동 1.2×1.0 km를 실제로 재구성하고 생성형 파사드를 얹어 본 결과, 본문의 가정 중 몇 가지가 수정을 요구했다. 이는 §6 실험 설계에 직접 반영된다.</p>
+<div class="tablewrap"><table>
+<caption><b>표 4.</b> 예비 구현에서 드러난 사실과 그 함의. 건물 4,348동(지상층수 1~23층 실측), 표고 25~98 m.</caption>
+<tr><th>관찰</th><th>함의</th></tr>
+<tr><td><b>실측 파사드 텍스처를 공개 경로로 얻을 수 없다.</b> 브이월드 3D 타일 서버(<code>XDServer3d</code>)는 인증키가 통과해도 <code>ERROR_DB_GENERAL</code>을 반환하며 타일 인덱스 규약이 공개돼 있지 않다. 거리뷰 계열은 약관상 재가공이 불가하다.</td><td>§4의 SR은 "저해상도 텍스처를 개선"하는 문제가 아니라 <b>텍스처가 아예 부재한 상태에서 생성</b>하는 문제가 된다. 이 구분이 평가 지표를 바꾼다 — 준거 없는 지각 평가가 불가피하다.</td></tr>
+<tr><td><b>확산 모델은 요청한 층수를 지키지 않는다.</b> "4개 층"을 조건으로 준 생성물이 실제로는 9.2층 또는 16.0층을 그렸다(자기상관 측정).</td><td>생성 텍스처의 실축 정합은 <b>선언값이 아니라 산출물에서 측정</b>해야 한다. §4.1 교차모달 SR에서도 출력의 구조 주기를 사후 검증하는 단계가 필요하다.</td></tr>
+<tr><td><b>이음매 없는 타일링은 부분적으로만 작동한다.</b> 모든 Conv2d에 circular padding을 걸어도 diffusers <code>Downsample2D</code>가 <code>F.pad(mode="constant")</code>를 하드코딩해 다운샘플 경로가 순환되지 않는다. 동일 프롬프트에서 시드에 따라 경계 불연속이 0.58~4.87배로 갈렸다.</td><td>타일 품질은 가정이 아니라 <b>측정 대상</b>이다. 후보를 여러 개 생성해 불연속을 재고 선별하는 절차가 파이프라인에 포함돼야 한다.</td></tr>
+<tr><td><b>생성 텍스처에 조명이 구워진다.</b> 네거티브 프롬프트로 배제해도 발코니 밑면 그늘이 남아, 3D 렌더의 광원과 이중으로 겹친다.</td><td>§4.3 음영 분해 손실의 필요성을 직접 확인한 사례다. 휘도를 높이로 간주하는 순진한 법선 유도는 같은 한계를 상속하므로 baseline으로만 유효하다.</td></tr>
+<tr><td><b>건물 세로 방향은 주기적이지 않다.</b> 1층은 상가·출입구·필로티로 층고부터 다르고, 최상부는 파라펫·옥탑이다.</td><td>단일 타일 반복은 1층을 전 층에 복제한다. <b>1층 / 기준층 / 최상층 3분할</b>이 최소 요건이며, 세로축 순환 패딩은 층 경계를 억지로 연속시키므로 오히려 해롭다.</td></tr>
+</table></div>
+<h3>5.5 출처 분리 원칙 (provenance separation)</h3>
+<p>예비 구현에서 가장 실질적인 교훈은 방법론이 아니라 <b>표기</b>에 있었다. 생성 결과가 그럴듯할수록 실측과 구분되지 않으며, 이는 디지털 트윈으로서도 게임 자산으로서도 위험하다. 따라서 파이프라인은 다음을 강제한다.</p>
+<ul>
+<li><b>계층 분리.</b> 실측 계층(footprint·지상층수·DEM·정사영상)과 생성 계층(파사드)을 물리적으로 분리하고, 생성 산출물이 없으면 자동으로 실측 계층만 렌더링한다.</li>
+<li><b>상시 표기.</b> 생성물이 적용 중인 동안 뷰어는 "생성형 모델 산출물(실측 아님)"을 항상 표시한다.</li>
+<li><b>즉시 가역.</b> 단축키 하나로 생성 계층을 끄고 실측 baseline과 직접 비교할 수 있어야 한다. 되돌리기 비용이 0일 때에만 생성물을 비판적으로 볼 수 있다.</li>
+<li><b>조건 기록.</b> 무엇이 생성을 조건화했는지(어떤 공개 속성), 실축을 측정으로 정했는지 선언값으로 정했는지, 경계 불연속이 얼마인지를 매니페스트에 남긴다.</li>
+</ul>
+<p>이 원칙은 §4.2 에피폴라 증류가 "일관되게 그럴듯한 것만 3D에 새긴다"고 한 것의 사용자 대면 대응물이다. 모델 내부에서 환각을 억제하는 것만으로는 부족하며, 남은 불확실성은 산출물에 표기돼야 한다.</p>
+
+<h2>6. 실험 계획</h2>
+<h3>6.1 데이터셋과 프로토콜</h3>
+<ul>
+<li><b>통제 실험:</b> Mip-NeRF 360, DTU, Tanks&amp;Temples를 ×4 다운샘플해 (LR 입력, HR 준거) 쌍 구성. HR 기하 준거는 DTU 구조광 스캔 사용.</li>
+<li><b>도시 실험:</b> UrbanScene3D·합성 도시(렌더 HR 준거) + 브이월드 실데이터(무준거, 지각 평가).</li>
+</ul>
+<h3>6.2 평가 지표</h3>
+<div class="tablewrap"><table>
+<caption><b>표 3.</b> 평가 축. 기존 3D SR 연구가 외관 지표만 보고하는 관행에서 벗어나 기하 지표를 동급으로 배치한다.</caption>
+<tr><th>축</th><th>지표</th><th>검증하는 주장</th></tr>
+<tr><td>외관</td><td>PSNR / SSIM / LPIPS (신규 뷰)</td><td>텍스처 개선</td></tr>
+<tr><td>기하</td><td>Chamfer distance, 법선 각오차, F-score@τ</td><td><b>형상 개선 (핵심 주장)</b></td></tr>
+<tr><td>일관성</td><td>뷰 간 재투영 특징 불일치, 시점 이동 플리커</td><td>환각 억제</td></tr>
+<tr><td>응용</td><td>3D Tiles 용량/프레임율, 파사드 창문 검출 IoU</td><td>디지털 트윈 실용성</td></tr>
+</table></div>
+<h3>6.3 절제 실험(Ablations)</h3>
+<ul>
+<li>λ_g = 0 (텍스처만 SR) vs 전체 — 기하 채널 SR의 기여 분리.</li>
+<li>에피폴라 증류 유무 — 환각으로 인한 Chamfer 악화가 실제로 방지되는지.</li>
+<li>음영 분해 유무 — 고주파 귀속 오류(텍스처에 새겨진 가짜 요철)의 정량화: 조명 방향을 바꿔 재렌더링했을 때의 오차로 측정.</li>
+<li>X-SR 결합 입력 vs RGB·법선 각각 독립 SR — 교차모달 조건화의 효과.</li>
+</ul>
+<h3>6.4 예상 반론과 한계</h3>
+<ul>
+<li><b>"생성된 기하는 측량이 아니다."</b> 맞다. GASR의 산출 기하는 지각적 개선이지 측지 정확도 향상이 아니며, 브이월드 원본을 스케일 앵커로 유지해 대변형을 정칙화로 금지한다. 응용 목표가 시각화·시뮬레이션용 트윈이므로 이는 수용 가능한 절충이다.</li>
+<li><b>계산 비용.</b> 뷰별 확산 SR + 쌍별 에피폴라 검증은 무겁다. 타일 단위 병렬화와 SR 결과 캐싱, 저비용 1단계(회귀 SR) → 고비용 2단계(확산 SR) 커리큘럼으로 완화한다.</li>
+<li><b>희소 뷰 지역.</b> 항공 연직 영상만 있는 지역의 파사드는 근본적으로 미관측이다. 이 경우 파사드 반복 사전 기반 생성은 "복원"이 아닌 "그럴듯한 합성"임을 메타데이터로 표기한다.</li>
+</ul>
+
+<h2>7. 결론</h2>
+<p>본 논문은 2D 초해상도의 생성 사전지식을 텍스처에만 쓰는 기존 관행을 넘어, 법선·깊이라는 기하 채널에 동시 전이하고 에피폴라 일관성과 음영 분해로 규율하는 GASR 프레임워크를 제안했다. 자연 영상의 고주파가 상당 부분 미세 기하의 음영이라는 관측이 이론적 토대이며, 다중 조명 관측이 풍부한 도시 항공 데이터는 이 분해에 오히려 유리하다. 브이월드·S-Map이라는 구체적 공개 데이터 위에서, 저품질 LoD 메시를 고품질 디지털 트윈과 게임 소비 가능(game-ready) 맵으로 끌어올리는 실용 파이프라인까지 설계함으로써, 방법론적 기여와 한국 지리공간 생태계에의 응용 기여를 함께 겨냥한다. 다음 단계는 §6.1 통제 실험의 λ_g 절제부터다 — 이 단일 실험이 본 논문의 핵심 주장(기하 채널 SR의 유효성)을 가장 빠르게 검증한다.</p>
+
+<h2>참고문헌</h2>
+<ol class="refs">
+<li>Dong, C. et al. "Image Super-Resolution Using Deep Convolutional Networks (SRCNN)." TPAMI 2016.</li>
+<li>Wang, X. et al. "ESRGAN: Enhanced Super-Resolution Generative Adversarial Networks." ECCVW 2018.</li>
+<li>Liang, J. et al. "SwinIR: Image Restoration Using Swin Transformer." ICCVW 2021.</li>
+<li>Wang, J. et al. "Exploiting Diffusion Prior for Real-World Image Super-Resolution (StableSR)." IJCV 2024.</li>
+<li>Yu, F. et al. "Scaling Up to Excellence: Practicing Model Scaling for Photo-Realistic Image Restoration (SUPIR)." CVPR 2024.</li>
+<li>Mildenhall, B. et al. "NeRF: Representing Scenes as Neural Radiance Fields for View Synthesis." ECCV 2020.</li>
+<li>Kerbl, B. et al. "3D Gaussian Splatting for Real-Time Radiance Field Rendering." SIGGRAPH 2023.</li>
+<li>Wang, C. et al. "NeRF-SR: High-Quality Neural Radiance Fields using Supersampling." ACM MM 2022.</li>
+<li>Feng, X. et al. "SRGS: Super-Resolution 3D Gaussian Splatting." ACM MM 2024.</li>
+<li>Yu, S. et al. "GaussianSR: High Fidelity 2D Gaussian Splatting for Arbitrary-Scale Super-Resolution." arXiv 2024.</li>
+<li>Shen, Y. et al. "SuperGaussian: Repurposing Video Models for 3D Super Resolution." ECCV 2024.</li>
+<li>Blau, Y., Michaeli, T. "The Perception-Distortion Tradeoff." CVPR 2018.</li>
+<li>Yang, L. et al. "Depth Anything: Unleashing the Power of Large-Scale Unlabeled Data." CVPR 2024.</li>
+</ol>
+
+<p class="note">본 문서는 연구 제안 초안(v1)이다. 표 1의 관련 연구 요약과 참고문헌 서지사항은 집필 시점 지식 기준이며, 투고 전 원문 대조 검증이 필요하다. 브이월드·S-Map 데이터 사용은 공공누리 라이선스 및 각 기관 API 약관 확인을 전제로 한다.</p>
+</div>
